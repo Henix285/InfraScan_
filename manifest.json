@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "BOT Detection Tool",
+  "version": "1.0",
+  "description": "Detect bot-like behavior on any website",
+
+  "permissions": ["activeTab", "scripting"],
+
+  "host_permissions": ["<all_urls>"],
+
+  "action": {
+    "default_popup": "popup.html"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["alert.mp3"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

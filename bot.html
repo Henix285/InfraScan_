@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOT — Intelligence · Mouse Tracking · Alerts</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030712;
+  --surface: #0d1117;
+  --surface2: #161b22;
+  --border: rgba(0,229,168,0.08);
+  --border2: rgba(0,229,168,0.18);
+  --primary: #00E5A8;
+  --primary-dim: rgba(0,229,168,0.07);
+  --primary-glow: rgba(0,229,168,0.22);
+  --red: #ff3b5c;
+  --orange: #ffaa00;
+  --blue: #38bdf8;
+  --purple: #9d6ef8;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #3d4f5c;
+  --sidebar-w: 220px;
+  --topbar-h: 52px;
+  --radius: 8px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;display:flex;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(rgba(0,229,168,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,168,0.018) 1px,transparent 1px);background-size:48px 48px;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* SIDEBAR */
+#sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:rgba(6,13,20,0.97);border-right:1px solid var(--border);backdrop-filter:blur(20px);display:flex;flex-direction:column;z-index:100;overflow-y:auto;}
+.sb-logo{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-logo-icon{width:30px;height:30px;border:1.5px solid var(--primary);border-radius:7px;background:var(--primary-dim);box-shadow:0 0 14px var(--primary-glow);display:flex;align-items:center;justify-content:center;font-size:14px;animation:iconpulse 3s ease infinite;}
+@keyframes iconpulse{0%,100%{box-shadow:0 0 14px var(--primary-glow);}50%{box-shadow:0 0 28px var(--primary-glow);}}
+.sb-logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:0.95rem;color:var(--primary);letter-spacing:2px;}
+.sb-logo-sub{font-size:0.55rem;color:var(--text3);letter-spacing:1.5px;font-family:'Space Mono',monospace;}
+.sb-section{padding:12px 12px 4px;font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text3);letter-spacing:2.5px;text-transform:uppercase;}
+.sb-link{display:flex;align-items:center;gap:9px;padding:7px 12px;margin:1px 8px;border-radius:6px;border:none;background:none;color:var(--text2);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;position:relative;width:calc(100% - 16px);}
+.sb-link:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.sb-link.active{color:var(--primary);background:var(--primary-dim);border:1px solid rgba(0,229,168,0.12);}
+.sb-link.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:60%;background:var(--primary);border-radius:2px;}
+.sb-status{margin-top:auto;padding:12px;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:0.6rem;}
+.sb-status-row{display:flex;align-items:center;gap:7px;color:var(--text3);}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 6px var(--primary);animation:blink 1.8s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* TOPBAR */
+#topbar{position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--topbar-h);z-index:99;background:rgba(6,13,20,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.5rem;gap:1rem;}
+.topbar-title{font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:var(--primary);letter-spacing:1px;}
+.topbar-crumb{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--text3);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:0.75rem;}
+.tbadge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:16px;font-family:'Space Mono',monospace;font-size:0.6rem;background:rgba(0,229,168,0.08);border:1px solid rgba(0,229,168,0.2);color:var(--primary);}
+.tb-live-dot{width:5px;height:5px;border-radius:50%;background:var(--primary);box-shadow:0 0 5px var(--primary);animation:blink 1.5s ease infinite;}
+
+/* MAIN */
+#main{margin-left:var(--sidebar-w);margin-top:var(--topbar-h);flex:1;position:relative;z-index:1;padding:1.5rem;}
+.page{display:none;animation:fadein 0.22s ease;}
+.page.active{display:block;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.section-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;}
+.section-title{font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:600;color:var(--primary);letter-spacing:3px;text-transform:uppercase;}
+.section-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent);}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;position:relative;overflow:hidden;}
+.card:hover{border-color:rgba(0,229,168,0.14);}
+.card-title{font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--primary);letter-spacing:2px;text-transform:uppercase;margin-bottom:1rem;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+label{display:block;font-size:0.68rem;font-weight:500;color:var(--text2);margin-bottom:5px;}
+input,select,textarea{width:100%;background:rgba(0,229,168,0.03);border:1px solid var(--border2);color:var(--text);padding:9px 12px;font-family:'Space Mono',monospace;font-size:0.75rem;border-radius:6px;outline:none;transition:border-color 0.18s;}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,229,168,0.08);}
+input::placeholder{color:var(--text3);}
+select option{background:var(--surface2);color:var(--text);}
+.form-group{margin-bottom:0.9rem;}
+.btn{padding:9px 20px;font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.18s;border:none;border-radius:6px;}
+.btn-primary{background:var(--primary);color:#040a10;box-shadow:0 0 14px rgba(0,229,168,0.2);}
+.btn-primary:hover{box-shadow:0 0 28px rgba(56,189,248,0.45);transform:translateY(-1px);}
+.btn-outline{background:transparent;color:var(--primary);border:1px solid rgba(0,229,168,0.25);}
+.btn-outline:hover{background:var(--primary-dim);}
+
+/* TOASTS */
+#toasts{position:fixed;top:calc(var(--topbar-h)+12px);right:16px;z-index:9500;display:flex;flex-direction:column;gap:8px;max-width:300px;}
+.toast{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:toastin 0.3s ease;}
+@keyframes toastin{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+.toast.t-danger{border-color:rgba(255,59,92,0.3);background:rgba(255,59,92,0.05);}
+.toast.t-warn{border-color:rgba(255,170,0,0.3);background:rgba(255,170,0,0.04);}
+.toast.t-info{border-color:rgba(0,229,168,0.2);background:rgba(0,229,168,0.04);}
+.toast.t-bot{border-color:rgba(157,110,248,0.3);background:rgba(157,110,248,0.04);}
+.toast-ico{font-size:0.9rem;flex-shrink:0;}
+.toast-body{flex:1;}
+.toast-title{font-size:0.68rem;font-weight:600;margin-bottom:2px;}
+.toast.t-danger .toast-title{color:var(--red);}
+.toast.t-warn .toast-title{color:var(--orange);}
+.toast.t-info .toast-title{color:var(--primary);}
+.toast.t-bot .toast-title{color:var(--purple);}
+.toast-msg{font-size:0.7rem;color:var(--text2);}
+.toast-close{cursor:pointer;color:var(--text3);font-size:0.75rem;}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:4px;margin-bottom:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px;}
+.nav-tab{flex:1;padding:8px;background:transparent;border:none;color:var(--text2);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;border-radius:5px;transition:all 0.15s;text-align:center;}
+.nav-tab:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.nav-tab.active{background:var(--primary-dim);color:var(--primary);border:1px solid rgba(0,229,168,0.2);}
+
+/* STATS */
+.stat-mini-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
+.stat-mini{flex:1;min-width:80px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem;text-align:center;}
+.stat-mini-num{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;}
+.stat-mini-lbl{font-size:0.58rem;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+
+/* CURSOR FX */
+.trail-dot{position:fixed;width:4px;height:4px;border-radius:50%;background:rgba(0,229,168,0.3);pointer-events:none;z-index:9999;animation:trailfade 0.8s ease forwards;}
+@keyframes trailfade{0%{transform:scale(1);opacity:0.7;}100%{transform:scale(0);opacity:0;}}
+.click-ring{position:fixed;width:24px;height:24px;border:1.5px solid var(--primary);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);animation:ringout 0.5s ease forwards;}
+@keyframes ringout{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0.9;}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0;}}
+
+/* INTELLIGENCE */
+.intel-result{padding:1rem;background:rgba(0,229,168,0.03);border:1px solid var(--border);border-radius:6px;margin-top:0.75rem;}
+.result-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);}
+.rk{font-size:0.7rem;color:var(--text2);}
+.rv{font-family:'Space Mono',monospace;font-size:0.7rem;}
+.rv.hi{color:var(--red);}  .rv.me{color:var(--orange);}  .rv.lo{color:var(--primary);}
+.flag-item{padding:4px 9px;background:rgba(255,59,92,0.05);border:1px solid rgba(255,59,92,0.14);border-radius:4px;font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--red);margin-top:3px;}
+.flag-item::before{content:'⚑ ';}
+.spin{width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--primary);border-radius:50%;animation:spinr 0.7s linear infinite;display:inline-block;}
+@keyframes spinr{to{transform:rotate(360deg);}}
+
+/* HEATMAP */
+.heatmap-wrap{border:1px solid var(--border);border-radius:var(--radius);background:rgba(56,189,248,0.01);overflow:hidden;position:relative;}
+.heatmap-label{position:absolute;top:7px;left:9px;font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text3);letter-spacing:2px;}
+
+/* METERS */
+.meter-rows{display:flex;flex-direction:column;gap:4px;}
+.meter-row{display:flex;align-items:center;gap:9px;padding:6px 9px;background:rgba(56,189,248,0.02);border:1px solid var(--border);border-radius:4px;}
+.meter-label{font-size:0.65rem;color:var(--text2);width:140px;flex-shrink:0;}
+.meter-track{flex:1;background:rgba(255,255,255,0.05);height:3px;border-radius:2px;overflow:hidden;}
+.meter-bar{height:100%;transition:width 0.45s cubic-bezier(0.4,0,0.2,1);background:var(--primary);border-radius:2px;}
+.meter-bar.warn{background:var(--orange);}
+.meter-bar.danger{background:var(--red);}
+.meter-val{font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--primary);width:48px;text-align:right;flex-shrink:0;}
+
+/* ALERT FEED */
+.alert-feed{display:flex;flex-direction:column;gap:2px;max-height:250px;overflow-y:auto;}
+.alert-item{padding:5px 10px;border-left:2px solid var(--border);border-radius:0 4px 4px 0;font-family:'Space Mono',monospace;font-size:0.62rem;animation:alertin 0.2s ease;}
+.alert-item.info{border-color:var(--primary);background:rgba(0,229,168,0.03);}
+.alert-item.warn{border-color:var(--orange);background:rgba(255,170,0,0.03);}
+.alert-item.danger{border-color:var(--red);background:rgba(255,59,92,0.04);}
+.alert-item.bot{border-color:var(--purple);background:rgba(157,110,248,0.04);}
+@keyframes alertin{from{opacity:0;transform:translateX(-5px);}to{opacity:1;transform:translateX(0);}}
+.alert-time{color:var(--text3);margin-right:5px;}
+
+/* BOT SCORE */
+.bot-score-display{text-align:center;padding:1rem;}
+.bot-score-num{font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;line-height:1;transition:color 0.4s;}
+.bot-score-label{font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:2px;margin-top:4px;transition:color 0.4s;}
+.c-lo{color:var(--primary);} .c-me{color:var(--orange);} .c-hi{color:var(--red);}
+
+/* RISK BADGE */
+.risk-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:16px;font-family:'Space Mono',monospace;font-size:0.58rem;font-weight:600;}
+.risk-hi{background:rgba(255,59,92,0.1);color:var(--red);border:1px solid rgba(255,59,92,0.25);}
+.risk-me{background:rgba(255,170,0,0.1);color:var(--orange);border:1px solid rgba(255,170,0,0.25);}
+.risk-lo{background:rgba(0,229,168,0.08);color:var(--primary);border:1px solid rgba(0,229,168,0.22);}
+
+/* CLICK ALERT FLASH */
+@keyframes flashRed{0%,100%{background:rgba(255,59,92,0);}50%{background:rgba(255,59,92,0.08);}}
+.flash-danger{animation:flashRed 0.3s ease;}
+
+@media(max-width:900px){:root{--sidebar-w:0px;} #sidebar{transform:translateX(-220px);width:220px;transition:transform 0.25s;} #sidebar.open{transform:translateX(0);} #topbar{left:0;} #main{margin-left:0;} .grid-2,.grid-3{grid-template-columns:1fr;}}
+.hamburger-btn{display:none;background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 9px;cursor:pointer;border-radius:6px;}
+@media(max-width:900px){.hamburger-btn{display:flex;align-items:center;}}
+</style>
+</head>
+<body>
+
+<audio id="alertBeep" preload="auto" loop>
+  <source src="./alert.mp3" type="audio/mpeg">
+</audio>
+
+<!-- CURSOR TRAIL ELEMENTS (JS driven) -->
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">🕵️</div>
+    <div>
+      <div class="sb-logo-text">BOT</div>
+      <div class="sb-logo-sub">INTELLIGENCE MODULE</div>
+    </div>
+  </div>
+  <div class="sb-section">BOT Tools</div>
+  <button class="sb-link active" onclick="showTab('intelligence')">🧠 Intelligence</button>
+  <button class="sb-link" onclick="showTab('mouse')">🖱️ Mouse Tracking</button>
+  <div style="margin:8px 12px;margin-top:auto;">
+    <a href="index1.html" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid rgba(0,229,168,0.12);background:rgba(0,229,168,0.04);color:var(--text2);text-decoration:none;font-size:0.75rem;font-weight:600;">← Back to Landing</a>
+  </div>
+  <div class="sb-status">
+    <div class="sb-status-row">
+      <div class="sb-dot"></div>
+      <span style="color:var(--text2);">BOT Engine Active</span>
+    </div>
+    <div style="margin-top:5px;color:var(--text3);font-size:0.55rem;">v2.4.1 · BOT Module</div>
+  </div>
+</nav>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button class="hamburger-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+  <div class="topbar-title">🕵️ BOT Intelligence</div>
+  <div class="topbar-crumb" id="topCrumb">Behavioral Intelligence · Mouse Tracking</div>
+  <div class="topbar-right">
+    <div id="clickCounter" style="font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--primary);">Clicks: <span id="topClicks">0</span></div>
+    <div id="alertIndicator" style="display:none;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--red);">🚨 <span id="alertNum">0</span> alerts</div>
+    <div class="tbadge"><div class="tb-live-dot"></div>Monitoring</div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- TAB NAV -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-intelligence" onclick="showTab('intelligence')">🧠 Intelligence</button>
+    <button class="nav-tab" id="tab-mouse" onclick="showTab('mouse')">🖱️ Mouse Clicking</button>
+  </div>
+
+  <!-- ══════ INTELLIGENCE PAGE ══════ -->
+  <div class="page active" id="page-intelligence">
+    <div class="section-header">
+      <div class="section-title">Behavioral Intelligence</div>
+      <div class="section-line"></div>
+      <span style="font-family:'Space Mono',monospace;font-size:0.56rem;color:var(--text3);">SESSION ANALYSIS · BOT DETECTION · THREAT SCORING</span>
+    </div>
+
+    <div class="stat-mini-row">
+      <div class="stat-mini"><div class="stat-mini-num" id="totalThreats" style="color:var(--primary);">0</div><div class="stat-mini-lbl">Threats Logged</div></div>
+      <div class="stat-mini"><div class="stat-mini-num" id="botScore" style="color:var(--orange);">0</div><div class="stat-mini-lbl">Bot Score</div></div>
+      <div class="stat-mini"><div class="stat-mini-num" id="alertCount" style="color:var(--red);">0</div><div class="stat-mini-lbl">Alerts Fired</div></div>
+      <div class="stat-mini"><div class="stat-mini-num" id="sessionClicks" style="color:var(--primary);">0</div><div class="stat-mini-lbl">Session Clicks</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.25rem;">
+      <!-- Domain Scan -->
+      <div class="card">
+        <div class="card-title">Domain Intelligence Scan</div>
+        <div style="display:flex;gap:0;margin-bottom:0.75rem;">
+          <input type="text" id="intelDomain" placeholder="paypal-secure.xyz or IP address">
+          <button style="padding:9px 16px;background:var(--primary);color:#040a10;border:none;border-radius:0 6px 6px 0;font-family:'Syne',sans-serif;font-weight:700;font-size:0.75rem;cursor:pointer;" onclick="runIntelScan()">Scan</button>
+        </div>
+        <div id="intelSpinner" style="display:none;align-items:center;gap:6px;font-size:0.72rem;color:var(--text2);"><span class="spin"></span>Analyzing...</div>
+        <div id="intelResult" style="display:none;"></div>
+        <div style="font-size:0.65rem;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.8;margin-top:0.5rem;">
+          ▸ TLD risk scoring · brand impersonation<br>
+          ▸ Subdomain analysis · homograph detection<br>
+          ▸ Behavioral correlation with mouse signals
+        </div>
+      </div>
+
+      <!-- BOT Intelligence Summary -->
+      <div class="card">
+        <div class="card-title">BOT Behavior Analysis</div>
+        <div style="font-size:0.78rem;color:var(--text2);line-height:1.7;margin-bottom:1rem;">The BOT module passively monitors session behavior — tracking mouse entropy, click patterns, keystroke cadence — to surface anomalous or bot-like activity in real time.</div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:0.72rem;color:var(--text2);">
+          <div>🧠 <strong style="color:var(--text);">ML-based anomaly scoring</strong> — deviation from human baselines</div>
+          <div>🖱️ <strong style="color:var(--text);">Mouse entropy analysis</strong> — mechanical vs organic movement</div>
+          <div>⚡ <strong style="color:var(--text);">Click burst detection</strong> — rapid programmatic clicking patterns</div>
+          <div>🚨 <strong style="color:var(--text);">Audio + visual alerts</strong> — fires when anomaly threshold exceeded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intelligence Alert Feed -->
+    <div class="card">
+      <div class="card-title">Intelligence Alert Feed
+        <button onclick="clearFeed()" style="float:right;background:transparent;border:1px solid rgba(56,189,248,0.15);color:var(--text3);padding:2px 8px;border-radius:4px;font-family:'Space Mono',monospace;font-size:0.52rem;cursor:pointer;">Clear</button>
+      </div>
+      <div class="alert-feed" id="intelFeed">
+        <div style="padding:0.5rem;font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--text3);">// BOT intelligence module active — scan a domain or monitor mouse activity...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ MOUSE TRACKING PAGE ══════ -->
+  <div class="page" id="page-mouse">
+    <div class="section-header">
+      <div class="section-title">Mouse Clicking Analysis</div>
+      <div class="section-line"></div>
+      <span style="font-family:'Space Mono',monospace;font-size:0.56rem;color:var(--text3);">HEATMAP · PATTERNS · BEEP ALERTS</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:1.25rem;margin-bottom:1.25rem;">
+
+      <!-- LEFT: Heatmap + Meters -->
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <!-- Heatmap -->
+        <div class="card" style="padding:0.9rem;">
+          <div class="card-title">Live Mouse Heatmap</div>
+          <div class="heatmap-wrap" style="height:200px;">
+            <canvas id="hmcv" height="200" style="display:block;width:100%;"></canvas>
+            <div class="heatmap-label">CURSOR ACTIVITY — LIVE</div>
+          </div>
+          <div style="display:flex;gap:1.5rem;margin-top:8px;font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text3);flex-wrap:wrap;">
+            <span>Moves: <span id="liveMoves" style="color:var(--primary)">0</span></span>
+            <span>Clicks: <span id="liveClicks" style="color:var(--orange)">0</span></span>
+            <span>Velocity: <span id="liveVelo" style="color:var(--primary)">0</span></span>
+            <span>Pattern: <span id="livePattern" style="color:var(--primary)">idle</span></span>
+            <span>Bursts: <span id="liveBursts" style="color:var(--red)">0</span></span>
+          </div>
+        </div>
+
+        <!-- Meters -->
+        <div class="card" style="padding:0.9rem;">
+          <div class="card-title">Behavioral Signal Meters</div>
+          <div class="meter-rows">
+            <div class="meter-row"><div class="meter-label">Mouse Movements</div><div class="meter-track"><div class="meter-bar" id="bm" style="width:0%"></div></div><div class="meter-val" id="vm">0</div></div>
+            <div class="meter-row"><div class="meter-label">Click Count</div><div class="meter-track"><div class="meter-bar" id="bc" style="width:0%"></div></div><div class="meter-val" id="vc">0</div></div>
+            <div class="meter-row"><div class="meter-label">Click Velocity</div><div class="meter-track"><div class="meter-bar" id="bv2" style="width:0%"></div></div><div class="meter-val" id="vv2">0</div></div>
+            <div class="meter-row"><div class="meter-label">Click Bursts</div><div class="meter-track"><div class="meter-bar" id="bb" style="width:0%"></div></div><div class="meter-val" id="vb">0</div></div>
+            <div class="meter-row"><div class="meter-label">Mouse Entropy</div><div class="meter-track"><div class="meter-bar" id="be" style="width:0%"></div></div><div class="meter-val" id="ve">—</div></div>
+            <div class="meter-row"><div class="meter-label">Bot Probability</div><div class="meter-track"><div class="meter-bar" id="bp" style="width:0%"></div></div><div class="meter-val" id="vp">0%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Score + Feed -->
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <!-- Bot Score Gauge -->
+        <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+          <div class="card-title" style="text-align:left;">BOT Risk Score</div>
+          <canvas id="gcv" width="180" height="105" style="display:block;margin:0 auto;max-width:180px;"></canvas>
+          <div class="bot-score-num c-lo" id="gscore">0</div>
+          <div class="bot-score-label c-lo" id="gverd">ANALYZING</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:12px;flex-wrap:wrap;">
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:0.7rem;" onclick="analyzeBehavior()">Analyze</button>
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:0.7rem;" onclick="resetTracking()">Reset</button>
+          </div>
+          <div style="margin-top:10px;font-size:0.62rem;color:var(--text3);font-family:'Space Mono',monospace;">Alert at score ≥ <span id="alertThresholdLabel" style="color:var(--orange)">70</span></div>
+          <div style="margin-top:5px;display:flex;align-items:center;gap:6px;justify-content:center;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.7rem;color:var(--text2);margin-bottom:0;">
+              <input type="range" id="botThreshold" min="20" max="100" value="70" style="width:80px;padding:0;background:transparent;border:none;" oninput="document.getElementById('alertThresholdLabel').textContent=this.value">
+            </label>
+          </div>
+        </div>
+
+        <!-- Click Alert Feed -->
+        <div class="card" style="padding:0.9rem;flex:1;">
+          <div class="card-title">Click Alert Feed
+            <button onclick="clearClickFeed()" style="float:right;background:transparent;border:1px solid rgba(56,189,248,0.15);color:var(--text3);padding:2px 8px;border-radius:4px;font-family:'Space Mono',monospace;font-size:0.52rem;cursor:pointer;">Clear</button>
+          </div>
+          <div class="alert-feed" id="clickFeed">
+            <div style="padding:0.5rem;font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--text3);">// Click here to start monitoring...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Click Tracking Area -->
+    <div class="card" style="text-align:center;padding:2rem;border:2px dashed var(--border2);cursor:crosshair;position:relative;overflow:hidden;" id="trackingZone" onclick="handleZoneClick(event)">
+      <div style="position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text3);letter-spacing:2px;">CLICK TRACKING ZONE</div>
+      <div style="font-size:1.5rem;margin-bottom:0.5rem;">🎯</div>
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:0.3rem;">Click anywhere in this zone</div>
+      <div style="font-size:0.72rem;color:var(--text2);">Each click is analyzed for bot patterns. Rapid clicking triggers audio alert.</div>
+      <div id="clickDots" style="position:absolute;inset:0;pointer-events:none;"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── AUDIO ──
+let beepEnabled = true;
+let audioUnlocked = false;
+
+// Unlock audio on first click
+document.addEventListener('click', () => {
+  if (!audioUnlocked) {
+    const audio = document.getElementById('alertBeep');
+    if (audio) {
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audioUnlocked = true;
+      }).catch(()=>{});
+    }
+  }
+});
+
+function playBeep() {
+  if (!beepEnabled) return;
+
+  const audio = document.getElementById('alertBeep');
+
+  if (audio && audioUnlocked) {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = 1.0;
+
+    audio.play().catch(() => fallbackBeep());
+  } else {
+    fallbackBeep();
+  }
+}
+
+// fallback (guaranteed sound)
+function fallbackBeep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(1000, ctx.currentTime);
+
+  gain.gain.setValueAtTime(1, ctx.currentTime);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  setTimeout(() => {
+    osc.stop();
+    ctx.close();
+  }, 400);
+}
+
+// ── TOAST ──
+function showToast(type, title, msg, dur=3500) {
+  if (type === 'danger' || type === 'warn') playBeep();
+  const ico = {danger:'🚨',warn:'⚠️',info:'✅',bot:'🤖'}[type]||'ℹ️';
+  const t = document.createElement('div');
+  t.className = `toast t-${type}`;
+  t.innerHTML = `<div class="toast-ico">${ico}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><div class="toast-close" onclick="this.parentElement.remove()">✕</div>`;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), dur);
+}
+
+// ── TAB NAV ──
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab, .sb-link').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
+  document.querySelector(`.sb-link[onclick="showTab('${tab}')"]`)?.classList.add('active');
+  const crumbs = {intelligence:'Behavioral Intelligence · Domain Scanning · Threat Analysis', mouse:'Mouse Clicking Analysis · Heatmap · Alert Beep'};
+  document.getElementById('topCrumb').textContent = crumbs[tab] || '';
+  if (tab === 'mouse') initHeatmap();
+}
+
+// ── ALERT FEED ──
+let alertTotal = 0;
+function addFeed(feedId, type, msg) {
+  const feed = document.getElementById(feedId);
+  if (!feed) return;
+  if (feed.children.length === 1 && !feed.children[0].classList.contains('alert-item')) feed.innerHTML = '';
+  const now = new Date().toLocaleTimeString();
+  const el = document.createElement('div');
+  el.className = `alert-item ${type}`;
+  el.innerHTML = `<span class="alert-time">${now}</span>${msg}`;
+  feed.insertBefore(el, feed.firstChild);
+  if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+  alertTotal++;
+  document.getElementById('alertCount').textContent = alertTotal;
+  const ai = document.getElementById('alertIndicator');
+  const an = document.getElementById('alertNum');
+  if (alertTotal > 0 && type === 'danger') { ai.style.display='block'; an.textContent = alertTotal; }
+}
+function clearFeed() { document.getElementById('intelFeed').innerHTML = '<div style="padding:0.5rem;font-family:\'JetBrains Mono\',monospace;font-size:0.6rem;color:var(--text3);">// Feed cleared</div>'; }
+function clearClickFeed() { document.getElementById('clickFeed').innerHTML = '<div style="padding:0.5rem;font-family:\'JetBrains Mono\',monospace;font-size:0.6rem;color:var(--text3);">// Feed cleared</div>'; }
+
+// ── INTELLIGENCE SCAN ──
+const SUSP_TLDS = ['.xyz','.top','.click','.tk','.ml','.ga','.cc','.info','.loan'];
+const BRANDS = ['paypal','google','amazon','apple','microsoft','netflix','facebook','bank'];
+
+function analyzeTargetIntel(target) {
+  const clean = target.replace(/^https?:\/\//, '').split('/')[0].toLowerCase();
+  let score = 0; const flags = [];
+  if (/^\d+\.\d+\.\d+\.\d+/.test(clean)) { score += 40; flags.push('IP-based URL — no domain name'); }
+  if (SUSP_TLDS.some(t => clean.endsWith(t))) { score += 25; flags.push('Suspicious TLD detected'); }
+  for (const b of BRANDS) {
+    if (clean.includes(b) && !clean.endsWith(`.${b}.com`)) { score += 35; flags.push(`Brand impersonation: "${b}"`); break; }
+  }
+  if (clean.split('.').length > 4) { score += 15; flags.push('Deep subdomain chain'); }
+  if (clean.includes('-') && clean.split('-').length > 3) { score += 10; flags.push('Excessive hyphens'); }
+  score = Math.min(score, 100);
+  return { target: clean, score, flags, level: score >= 70 ? 'HIGH' : score >= 40 ? 'MEDIUM' : 'LOW' };
+}
+
+async function runIntelScan() {
+  const target = document.getElementById('intelDomain').value.trim();
+  if (!target) { showToast('warn','Input Required','Enter a domain or IP to scan.'); return; }
+  document.getElementById('intelSpinner').style.display = 'flex';
+  document.getElementById('intelResult').style.display = 'none';
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('intelSpinner').style.display = 'none';
+  const result = analyzeTargetIntel(target);
+  const col = result.score >= 70 ? 'var(--red)' : result.score >= 40 ? 'var(--orange)' : 'var(--primary)';
+  const cls = result.score >= 70 ? 'risk-hi' : result.score >= 40 ? 'risk-me' : 'risk-lo';
+  document.getElementById('intelResult').style.display = 'block';
+  document.getElementById('intelResult').innerHTML = `
+    <div class="intel-result">
+      <div class="result-row"><div class="rk">Target</div><div class="rv">${result.target}</div></div>
+      <div class="result-row"><div class="rk">Risk Score</div><div class="rv" style="color:${col};font-weight:700;">${result.score}/100</div></div>
+      <div class="result-row" style="border:none;"><div class="rk">Threat Level</div><div class="rv"><span class="risk-badge ${cls}">${result.level}</span></div></div>
+    </div>
+    ${result.flags.map(f=>`<div class="flag-item">${f}</div>`).join('')}
+    ${!result.flags.length ? '<div style="color:var(--primary);font-size:0.72rem;margin-top:5px;">✓ No suspicious flags detected</div>' : ''}
+  `;
+  document.getElementById('totalThreats').textContent = ++scanCount;
+  const type = result.score >= 70 ? 'danger' : result.score >= 40 ? 'warn' : 'info';
+  if (result.score >= 70) { playBeep(); showToast('danger','🚨 High Risk', `${result.target} — ${result.score}/100`, 5000); }
+  else if (result.score >= 40) showToast('warn','⚠️ Suspicious', `${result.target} — ${result.score}/100`);
+  else showToast('info','✅ Safe', `${result.target} — ${result.score}/100`);
+  addFeed('intelFeed', type, `${result.level} — ${result.target} (${result.score}/100)`);
+  if (result.flags.length) result.flags.forEach(f => addFeed('intelFeed', 'danger', `Flag: ${f}`));
+}
+let scanCount = 0;
+
+// ── MOUSE TRACKING ──
+let B = {mv:0, cl:0, last:Date.now(), hes:[], wpm:0};
+let hmap = [], clickPositions = [], mouseVelocities = [], mouseVeloAvg = 0;
+let clickBursts = 0, lastClickTime = 0;
+let hmcv, hmx;
+
+function initHeatmap() {
+  hmcv = document.getElementById('hmcv');
+  if (!hmcv) return;
+  hmx = hmcv.getContext('2d');
+  hmcv.width = hmcv.offsetWidth || hmcv.parentElement?.offsetWidth || 400;
+  hmcv.height = 200;
+  drawHM();
+}
+
+function drawHM() {
+  if (!hmcv || !hmx) return;
+  hmx.clearRect(0, 0, hmcv.width, hmcv.height);
+  hmx.fillStyle = 'rgba(6,13,20,0.6)';
+  hmx.fillRect(0, 0, hmcv.width, hmcv.height);
+  hmap.slice(-600).forEach(p => {
+    const intensity = Math.min(p.s / 20, 1);
+    const col = intensity > 0.7 ? '255,59,92' : intensity > 0.3 ? '255,170,0' : '56,189,248';
+    const g = hmx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 22);
+    g.addColorStop(0, `rgba(${col},0.22)`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    hmx.fillStyle = g;
+    hmx.beginPath();
+    hmx.arc(p.x, p.y, 22, 0, Math.PI * 2);
+    hmx.fill();
+  });
+  if (hmap.length) {
+    const l = hmap[hmap.length - 1];
+    hmx.beginPath();
+    hmx.arc(l.x, l.y, 5, 0, Math.PI * 2);
+    hmx.fillStyle = 'rgba(56,189,248,0.9)';
+    hmx.fill();
+  }
+  // Draw click positions
+  clickPositions.slice(-20).forEach(cp => {
+    if (!hmcv) return;
+    const r = hmcv.getBoundingClientRect();
+    const cx = ((cp.x - r.left) / r.width) * hmcv.width;
+    const cy = ((cp.y - r.top) / r.height) * hmcv.height;
+    if (cx >= 0 && cx <= hmcv.width && cy >= 0 && cy <= hmcv.height) {
+      hmx.beginPath();
+      hmx.arc(cx, cy, 10, 0, Math.PI * 2);
+      hmx.strokeStyle = 'rgba(255,59,92,0.6)';
+      hmx.lineWidth = 1.5;
+      hmx.stroke();
+    }
+  });
+}
+
+function drawGauge(score) {
+  const c = document.getElementById('gcv');
+  if (!c) return;
+  const ctx = c.getContext('2d'), W = c.width, H = c.height, cx = W/2, cy = H+2, r = 68;
+  ctx.clearRect(0, 0, W, H);
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2*Math.PI);
+  ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.stroke();
+  const col = score >= 70 ? '#ff3b5c' : score >= 40 ? '#ffaa00' : '#00E5A8';
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + (score/100)*Math.PI);
+  ctx.lineWidth = 10; ctx.strokeStyle = col; ctx.lineCap = 'round';
+  ctx.shadowBlur = 14; ctx.shadowColor = col; ctx.stroke(); ctx.shadowBlur = 0;
+}
+
+function calcBotScore() {
+  let r = 0;
+  if (B.mv < 10) r += 25;
+  if (B.cl === 0) r += 20;
+  else if (B.cl > 30) r += 20;
+  if (mouseVeloAvg > 25) r += 20;
+  if (clickBursts > 4) r += 25;
+  if (clickBursts > 8) r += 15;
+  if (B.mv > 0 && B.cl / B.mv > 0.5) r += 15;
+  return Math.min(Math.round(r), 100);
+}
+
+function sb(bid, vid, pct, val) {
+  const b = document.getElementById(bid); if (!b) return;
+  b.style.width = pct + '%';
+  b.classList.remove('warn','danger');
+  if (pct > 70) b.classList.add('danger');
+  else if (pct > 40) b.classList.add('warn');
+  const v = document.getElementById(vid); if (v) v.textContent = val;
+}
+
+function updMetrics() {
+  sb('bm','vm', Math.min(B.mv/500,1)*100, B.mv);
+  sb('bc','vc', Math.min(B.cl/50,1)*100, B.cl);
+  sb('bv2','vv2', Math.min(mouseVeloAvg/30,1)*100, Math.round(mouseVeloAvg));
+  sb('bb','vb', Math.min(clickBursts/10,1)*100, clickBursts);
+  const entropy = B.mv > 0 ? (mouseVeloAvg / 30).toFixed(2) : '—';
+  sb('be','ve', Math.min(mouseVeloAvg/30,1)*100, entropy);
+  const botP = calcBotScore();
+  sb('bp','vp', botP, botP + '%');
+  drawGauge(botP);
+  const cls = botP >= 70 ? 'c-hi' : botP >= 40 ? 'c-me' : 'c-lo';
+  const gs = document.getElementById('gscore'); if (gs) { gs.textContent = botP; gs.className = `bot-score-num ${cls}`; }
+  const gv = document.getElementById('gverd'); if (gv) { gv.textContent = botP >= 70 ? 'BOT DETECTED' : botP >= 40 ? 'SUSPICIOUS' : 'HUMAN-LIKE'; gv.className = `bot-score-label ${cls}`; }
+  document.getElementById('botScore').textContent = botP;
+  document.getElementById('sessionClicks').textContent = B.cl;
+  document.getElementById('topClicks').textContent = B.cl;
+}
+
+// Global mouse listeners
+document.addEventListener('mousemove', e => {
+  const now = Date.now();
+  const dx = e.clientX - (window._lastX||0), dy = e.clientY - (window._lastY||0);
+  const dt = (now - (window._lastT||now)) || 1;
+  const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;
+  window._lastX = e.clientX; window._lastY = e.clientY; window._lastT = now;
+  mouseVelocities.push(speed);
+  if (mouseVelocities.length > 20) mouseVelocities.shift();
+  mouseVeloAvg = mouseVelocities.reduce((a,b)=>a+b,0) / mouseVelocities.length;
+  B.mv++;
+  // Trail
+  const dot = document.createElement('div');
+  dot.className = 'trail-dot';
+  dot.style.left = (e.clientX - 2) + 'px';
+  dot.style.top = (e.clientY - 2) + 'px';
+  document.body.appendChild(dot);
+  setTimeout(()=>dot.remove(), 800);
+  // Heatmap
+  if (hmcv) {
+    const r2 = hmcv.getBoundingClientRect();
+    const x = ((e.clientX - r2.left) / r2.width) * hmcv.width;
+    const y = ((e.clientY - r2.top) / r2.height) * hmcv.height;
+    if (x >= 0 && x <= hmcv.width && y >= 0 && y <= hmcv.height) {
+      hmap.push({x, y, s: speed});
+      if (hmap.length % 5 === 0) drawHM();
+    }
+  }
+  const lm = document.getElementById('liveMoves'); if (lm) lm.textContent = B.mv;
+  const lv = document.getElementById('liveVelo'); if (lv) lv.textContent = Math.round(mouseVeloAvg);
+  const lp = document.getElementById('livePattern');
+  if (lp) {
+    const pat = mouseVeloAvg > 15 ? 'rapid' : mouseVeloAvg > 5 ? 'normal' : 'slow';
+    lp.textContent = pat;
+    lp.style.color = pat === 'rapid' ? 'var(--red)' : pat === 'normal' ? 'var(--primary)' : 'var(--orange)';
+  }
+  if (B.mv % 15 === 0) updMetrics();
+});
+
+document.addEventListener('click', e => {
+  B.cl++;
+  clickPositions.push({x: e.clientX, y: e.clientY, t: Date.now()});
+  // Click ring
+  const ring = document.createElement('div');
+  ring.className = 'click-ring';
+  ring.style.left = e.clientX + 'px';
+  ring.style.top = e.clientY + 'px';
+  document.body.appendChild(ring);
+  setTimeout(()=>ring.remove(), 500);
+  const now = Date.now();
+  if (now - lastClickTime < 400) { clickBursts++; }
+  lastClickTime = now;
+  const lc = document.getElementById('liveClicks'); if (lc) lc.textContent = B.cl;
+  const lb = document.getElementById('liveBursts'); if (lb) lb.textContent = clickBursts;
+  updMetrics();
+  const threshold = parseInt(document.getElementById('botThreshold')?.value || 70);
+  const score = calcBotScore();
+  if (score >= threshold) {
+    playBeep();
+    addFeed('clickFeed', 'danger', `🚨 HIGH BOT SCORE (${score}) — click #${B.cl} at (${Math.round(e.clientX)},${Math.round(e.clientY)})`);
+    addFeed('intelFeed', 'danger', `Bot alert: score ${score}/100, click #${B.cl}`);
+    showToast('danger','🤖 BOT Activity Detected', `Score: ${score}/100 — ${clickBursts} bursts`, 3500);
+    document.body.classList.add('flash-danger');
+    setTimeout(()=>document.body.classList.remove('flash-danger'), 300);
+  } else if (B.cl % 5 === 0) {
+    addFeed('clickFeed', 'info', `Click #${B.cl} at (${Math.round(e.clientX)},${Math.round(e.clientY)}) — score: ${score}`);
+  }
+  drawHM();
+});
+
+function handleZoneClick(e) {
+  const zone = document.getElementById('trackingZone');
+  const r = zone.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const dot = document.createElement('div');
+  dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:12px;height:12px;border-radius:50%;background:var(--primary);opacity:0.8;transform:translate(-50%,-50%);animation:trailfade 1.5s ease forwards;pointer-events:none;box-shadow:0 0 8px var(--primary);`;
+  document.getElementById('clickDots').appendChild(dot);
+  setTimeout(()=>dot.remove(), 1500);
+  const threshold = parseInt(document.getElementById('botThreshold')?.value || 70);
+  if (clickBursts >= 3) {
+    playBeep();
+    addFeed('clickFeed', 'danger', `⚡ Burst detected in zone! Burst count: ${clickBursts}`);
+  } else {
+    addFeed('clickFeed', 'info', `Zone click at (${Math.round(x)}, ${Math.round(y)})`);
+  }
+}
+
+function analyzeBehavior() {
+  const score = calcBotScore();
+  const threshold = parseInt(document.getElementById('botThreshold')?.value || 70);
+  if (score >= threshold) { playBeep(); showToast('danger','🤖 BOT Detected', `Score: ${score}/100`, 4000); }
+  else if (score >= threshold * 0.6) showToast('warn','⚠️ Suspicious', `Score: ${score}/100`);
+  else showToast('info','✅ Human-like', `Score: ${score}/100`);
+  addFeed('intelFeed', score >= threshold ? 'danger' : score >= 30 ? 'warn' : 'info', `Behavior analysis: score ${score}/100 — ${clickBursts} click bursts, ${B.mv} moves`);
+}
+
+function resetTracking() {
+  B = {mv:0, cl:0, last:Date.now(), hes:[], wpm:0};
+  hmap = []; clickPositions = []; mouseVelocities = []; mouseVeloAvg = 0;
+  clickBursts = 0; lastClickTime = 0;
+  drawGauge(0);
+  const gs = document.getElementById('gscore'); if (gs) { gs.textContent='0'; gs.className='bot-score-num c-lo'; }
+  const gv = document.getElementById('gverd'); if (gv) { gv.textContent='ANALYZING'; gv.className='bot-score-label c-lo'; }
+  ['bm','bc','bv2','bb','be','bp'].forEach(id => { const el=document.getElementById(id); if(el) el.style.width='0%'; });
+  ['vm','vc','vv2','vb','ve','vp'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
+  const vp = document.getElementById('vp'); if(vp) vp.textContent='0%';
+  drawHM();
+  addFeed('clickFeed', 'info', 'Tracking reset — new session started');
+}
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  initHeatmap();
+  drawGauge(0);
+  addFeed('intelFeed', 'info', '🕵️ BOT Intelligence module initialized');
+  addFeed('intelFeed', 'bot', 'Mouse & click tracking active — move and click to generate signals');
+  setTimeout(() => showToast('bot','🤖 BOT Module Online', 'Intelligence · Mouse Tracking · Alert Beep ready.'), 400);
+});
+
+window.addEventListener('resize', () => initHeatmap());
+</script>
+</body>
+</html>

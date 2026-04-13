@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InfraScan — AI Threat Intelligence Control Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #030712;
+    --surface: #0d1117;
+    --surface2: #161b22;
+    --border: #21262d;
+    --accent: #00ff9d;
+    --accent2: #ff3c3c;
+    --accent3: #fbbf24;
+    --accent4: #38bdf8;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --glow: rgba(0,255,157,0.18);
+    --glow2: rgba(255,60,60,0.15);
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --radius: 12px;
+    --radius-sm: 6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,157,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,157,0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glowing blobs */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: 0.10;
+    pointer-events: none;
+    z-index: 0;
+    animation: blobFloat 10s ease-in-out infinite alternate;
+  }
+  .blob-1 { width: 480px; height: 480px; background: var(--accent); top: -180px; right: -80px; animation-delay: 0s; }
+  .blob-2 { width: 380px; height: 380px; background: var(--accent2); bottom: -120px; left: -80px; animation-delay: 4s; }
+
+  @keyframes blobFloat {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(30px,20px) scale(1.08); }
+  }
+
+  /* ───── NAV ───── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 40px;
+    background: rgba(3,7,18,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .nav-logo .logo-icon {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .nav-logo .logo-icon svg {
+    width: 36px; height: 36px;
+    filter: drop-shadow(0 0 8px rgba(0,255,157,0.45));
+  }
+  .nav-logo .logo-wordmark { display: flex; align-items: baseline; gap: 1px; }
+  .nav-logo .logo-wordmark .w1 { color: var(--text); }
+  .nav-logo .logo-wordmark .w2 { color: var(--accent); }
+
+  .nav-links {
+    display: flex; gap: 8px; align-items: center;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .nav-links a:hover { color: var(--text); background: var(--surface2); }
+
+  .nav-cta {
+    background: var(--accent) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    padding: 8px 18px !important;
+    box-shadow: 0 0 16px var(--glow);
+  }
+  .nav-cta:hover { background: #00e88c !important; transform: translateY(-1px); box-shadow: 0 0 24px var(--glow) !important; }
+
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; }
+  .hamburger span { display: block; width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: 0.3s; }
+
+  /* ───── HERO ───── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    padding: 90px 40px 60px;
+    text-align: center;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,157,0.08);
+    border: 1px solid rgba(0,255,157,0.25);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    margin-bottom: 28px;
+    letter-spacing: 0.5px;
+  }
+  .hero-badge::before { content: ''; width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(0,255,157,0); }
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+  .hero h1 .highlight {
+    color: var(--accent);
+    position: relative;
+  }
+  .hero p {
+    font-size: 1.1rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 600px;
+    margin: 0 auto 40px;
+  }
+
+  /* ───── SCANNER ───── */
+  #scanner {
+    position: relative;
+    z-index: 1;
+    padding: 0 40px 80px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .scanner-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    box-shadow: 0 0 40px rgba(0,255,157,0.04), 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  .scanner-label {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .url-input {
+    flex: 1;
+    min-width: 260px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .url-input::placeholder { color: var(--muted); }
+  .url-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,157,0.12);
+  }
+
+  .scan-btn {
+    background: linear-gradient(135deg, var(--accent), #00c97a);
+    color: #000;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 0 20px var(--glow);
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .scan-btn:hover { transform: translateY(-2px); box-shadow: 0 0 32px var(--glow); }
+  .scan-btn:active { transform: translateY(0); }
+  .scan-btn.loading { opacity: 0.8; pointer-events: none; }
+
+  .scan-tabs {
+    display: flex; gap: 4px; margin-bottom: 20px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+
+  /* Text area mode */
+  .url-input.textarea-mode {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  /* ───── RESULT PANEL ───── */
+  #result-panel {
+    margin-top: 28px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .risk-score-ring {
+    position: relative;
+    width: 80px; height: 80px;
+    flex-shrink: 0;
+  }
+  .risk-score-ring svg { transform: rotate(-90deg); }
+  .risk-score-ring .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .ring-label small { font-size: 0.55rem; color: var(--muted); margin-top: 2px; letter-spacing: 1px; }
+
+  .result-verdict {
+    flex: 1;
+  }
+  .verdict-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .verdict-badge.danger { background: rgba(255,60,60,0.15); color: var(--accent2); border: 1px solid rgba(255,60,60,0.3); }
+  .verdict-badge.warning { background: rgba(251,191,36,0.12); color: var(--accent3); border: 1px solid rgba(251,191,36,0.3); }
+  .verdict-badge.safe { background: rgba(0,255,157,0.1); color: var(--accent); border: 1px solid rgba(0,255,157,0.3); }
+
+  .verdict-url {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    word-break: break-all;
+  }
+
+  /* Risk Breakdown Grid */
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .breakdown-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .breakdown-item.flagged {
+    border-color: rgba(255,60,60,0.3);
+    background: rgba(255,60,60,0.04);
+  }
+  .breakdown-item.ok {
+    border-color: rgba(0,255,157,0.2);
+    background: rgba(0,255,157,0.03);
+  }
+  .breakdown-item.warn {
+    border-color: rgba(251,191,36,0.25);
+    background: rgba(251,191,36,0.03);
+  }
+
+  .breakdown-icon { font-size: 1.4rem; }
+  .breakdown-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+  .breakdown-detail {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    line-height: 1.5;
+  }
+  .breakdown-status {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    width: fit-content;
+    margin-top: auto;
+  }
+  .breakdown-status.red { background: rgba(255,60,60,0.15); color: var(--accent2); }
+  .breakdown-status.green { background: rgba(0,255,157,0.12); color: var(--accent); }
+  .breakdown-status.yellow { background: rgba(251,191,36,0.12); color: var(--accent3); }
+
+  /* Loader */
+  .scan-loader {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 0;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+  .scan-loader.active { display: flex; }
+  .loader-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .loader-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), #00c97a);
+    border-radius: 2px;
+    transition: width 0.15s linear;
+    box-shadow: 0 0 10px var(--glow);
+  }
+
+  /* ───── STATS ROW ───── */
+  .stats-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 80px;
+  }
+  .stat-item {
+    flex: 1;
+    background: var(--surface);
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    letter-spacing: -1px;
+  }
+  .stat-label { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+
+  /* ───── DASHBOARD SECTION ───── */
+  #dashboard {
+    position: relative;
+    z-index: 1;
+    padding: 0 40px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .section-title {
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .section-subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+  .section-mono {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+  /* Chart card */
+  .chart-card, .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .chart-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .chart-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 24px; }
+
+  /* Threat type bars */
+  .threat-bars { display: flex; flex-direction: column; gap: 14px; }
+  .bar-row { display: flex; flex-direction: column; gap: 6px; }
+  .bar-meta { display: flex; justify-content: space-between; align-items: center; }
+  .bar-name { font-size: 0.82rem; font-weight: 600; }
+  .bar-count { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+  .bar-track {
+    height: 7px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s cubic-bezier(0.16,1,0.3,1);
+    width: 0;
+  }
+
+  /* Mini donut */
+  .donut-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .donut-legend { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; color: var(--muted); }
+  .legend-val { font-family: var(--font-mono); font-size: 0.78rem; }
+
+  /* ───── THREAT DB ───── */
+  #threats {
+    position: relative;
+    z-index: 1;
+    padding: 0 40px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .threat-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .table-toolbar {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .toolbar-left { display: flex; align-items: center; gap: 12px; }
+
+  .db-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.25);
+    color: var(--accent4);
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+  }
+  .db-badge::before { content: ''; width: 6px; height: 6px; background: var(--accent4); border-radius: 50%; animation: pulse2 2s infinite; }
+  @keyframes pulse2 {
+    0%,100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(56,189,248,0); }
+  }
+
+  .filter-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover, .filter-btn.active { color: var(--text); border-color: var(--muted); background: var(--border); }
+
+  .search-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.2s;
+  }
+  .search-box::placeholder { color: var(--muted); }
+  .search-box:focus { border-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th {
+    padding: 12px 20px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  td {
+    padding: 14px 20px;
+    font-size: 0.83rem;
+    border-bottom: 1px solid rgba(33,38,45,0.6);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr {
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  tbody tr:hover { background: var(--surface2); }
+
+  .td-url {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent4);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .td-time { color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; }
+
+  .risk-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .risk-chip.high { background: rgba(255,60,60,0.15); color: var(--accent2); }
+  .risk-chip.medium { background: rgba(251,191,36,0.12); color: var(--accent3); }
+  .risk-chip.low { background: rgba(0,255,157,0.1); color: var(--accent); }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-mono);
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Pagination */
+  .table-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .page-info { font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono); }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+  /* ───── API SECTION ───── */
+  #api {
+    position: relative;
+    z-index: 1;
+    padding: 0 40px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .api-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 800px) { .api-grid { grid-template-columns: 1fr; } }
+
+  .endpoint-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .endpoint-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .method-badge {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .method-badge.post { background: rgba(0,255,157,0.12); color: var(--accent); border: 1px solid rgba(0,255,157,0.25); }
+  .method-badge.get { background: rgba(56,189,248,0.1); color: var(--accent4); border: 1px solid rgba(56,189,248,0.25); }
+  .method-badge.delete { background: rgba(255,60,60,0.1); color: var(--accent2); border: 1px solid rgba(255,60,60,0.2); }
+
+  .endpoint-path {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text);
+  }
+
+  .code-block {
+    background: #0a0e17;
+    padding: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #a8b3cf;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block .kw { color: #ff79c6; }
+  .code-block .str { color: #f1fa8c; }
+  .code-block .key { color: var(--accent4); }
+  .code-block .val { color: #bd93f9; }
+  .code-block .comment { color: #6272a4; }
+
+  .code-copy-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .code-copy-btn:hover { color: var(--text); }
+
+  .endpoint-desc {
+    padding: 16px 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Try-it panel */
+  .try-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    grid-column: span 2;
+  }
+  @media (max-width: 800px) { .try-panel { grid-column: span 1; } }
+
+  .try-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .try-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
+
+  .try-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .try-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    cursor: pointer;
+  }
+  .try-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    min-width: 200px;
+  }
+  .try-input::placeholder { color: var(--muted); }
+  .try-send-btn {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 14px var(--glow);
+  }
+  .try-send-btn:hover { background: #00e88c; }
+
+  .try-response {
+    background: #0a0e17;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: #a8b3cf;
+    line-height: 1.7;
+    min-height: 80px;
+    border: 1px solid var(--border);
+  }
+
+  /* ───── FOOTER ───── */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--surface);
+  }
+
+  .footer-logo { font-size: 1.1rem; font-weight: 800; }
+  .footer-logo span { color: var(--accent); }
+  .footer-copy { font-size: 0.78rem; color: var(--muted); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--accent); }
+
+  /* Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ───── TOAST ───── */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    box-shadow: 0 0 30px var(--glow);
+    z-index: 9999;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ───── MOBILE ───── */
+  @media (max-width: 768px) {
+    nav { padding: 14px 20px; }
+    .nav-links { display: none; position: absolute; top: 65px; left: 0; right: 0; background: rgba(3,7,18,0.97); backdrop-filter: blur(20px); flex-direction: column; padding: 20px; border-bottom: 1px solid var(--border); gap: 4px; }
+    .nav-links.open { display: flex; }
+    .hamburger { display: flex; }
+    .hero { padding: 60px 20px 40px; }
+    #scanner, #dashboard, #threats, #api { padding-left: 20px; padding-right: 20px; }
+    .stats-row { flex-wrap: wrap; }
+    .stat-item { min-width: 50%; }
+    .section-title { font-size: 1.35rem; }
+    th, td { padding: 10px 12px; }
+    .td-url { max-width: 160px; }
+    footer { padding: 28px 20px; flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ───── HERO MODULE BUTTONS ───── */
+  .hero-modules {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    margin-top: 12px;
+  }
+  .module-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 22px;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .module-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .module-phishing { border-color: rgba(0,255,157,0.2); }
+  .module-phishing::before { background: radial-gradient(circle at 20% 50%, rgba(0,255,157,0.07), transparent 70%); }
+  .module-phishing:hover { border-color: var(--accent); box-shadow: 0 0 24px rgba(0,255,157,0.12); transform: translateY(-2px); }
+  .module-phishing:hover::before { opacity: 1; }
+  .module-cisys { border-color: rgba(56,189,248,0.2); }
+  .module-cisys::before { background: radial-gradient(circle at 20% 50%, rgba(56,189,248,0.07), transparent 70%); }
+  .module-cisys:hover { border-color: var(--accent4); box-shadow: 0 0 24px rgba(56,189,248,0.12); transform: translateY(-2px); }
+  .module-cisys:hover::before { opacity: 1; }
+  .module-content { flex: 1; text-align: left; }
+  .module-name { font-size: 0.95rem; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .module-phishing .module-name { color: var(--accent); }
+  .module-cisys .module-name { color: var(--accent4); }
+  .module-desc { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); }
+  .module-arrow { font-size: 1rem; color: var(--muted); transition: transform 0.2s; }
+  .module-btn:hover .module-arrow { transform: translateX(4px); }
+  @media (max-width: 600px) { .hero-modules { flex-wrap: wrap; } }
+
+  /* ───── ABOUT SECTION ───── */
+  #about {
+    position: relative;
+    z-index: 1;
+    padding: 80px 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+  @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+  .about-block h2 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 16px;
+  }
+  .about-block p {
+    color: var(--muted);
+    font-size: 0.93rem;
+    line-height: 1.8;
+    margin-bottom: 14px;
+  }
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .feature-list li .fi { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+  /* ───── BUSINESS PLAN SECTION ───── */
+  #business {
+    position: relative;
+    z-index: 1;
+    padding: 0 40px 80px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .plan-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 28px;
+  }
+  @media (max-width: 900px) { .plan-cards { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .plan-cards { grid-template-columns: 1fr; } }
+  .plan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .plan-card:hover { transform: translateY(-3px); }
+  .plan-card.featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 32px rgba(0,255,157,0.06);
+  }
+  .plan-card.featured:hover { box-shadow: 0 0 48px rgba(0,255,157,0.12); }
+  .plan-card.plan-enterprise { border-color: rgba(56,189,248,0.25); }
+  .plan-card.plan-enterprise:hover { border-color: var(--accent4); box-shadow: 0 0 32px rgba(56,189,248,0.08); }
+  .plan-tag {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    width: fit-content;
+  }
+  .plan-tag.starter { background: rgba(139,148,158,0.12); color: var(--muted); border: 1px solid var(--border); }
+  .plan-tag.pro { background: rgba(0,255,157,0.1); color: var(--accent); border: 1px solid rgba(0,255,157,0.25); }
+  .plan-tag.enterprise { background: rgba(56,189,248,0.08); color: var(--accent4); border: 1px solid rgba(56,189,248,0.25); }
+  .plan-name { font-size: 1.2rem; font-weight: 800; }
+  .plan-price { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; letter-spacing: -1px; }
+  .plan-price span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+  .plan-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+  .plan-divider { height: 1px; background: var(--border); }
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .plan-features li { font-size: 0.82rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; }
+  .plan-features li.no::before { content: '✕'; color: var(--border); }
+  .plan-cta {
+    margin-top: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .plan-cta:hover { border-color: var(--muted); background: var(--surface2); }
+  .plan-card.featured .plan-cta { background: var(--accent); color: #000; border-color: transparent; box-shadow: 0 0 16px var(--glow); }
+  .plan-card.featured .plan-cta:hover { background: #00e88c; box-shadow: 0 0 24px var(--glow); }
+
+
+  /* ───── FOCUS / ACCESSIBILITY ───── */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  /* Skip to main content link */
+  .skip-link {
+    position: fixed;
+    top: -100px;
+    left: 20px;
+    z-index: 9999;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: top 0.2s;
+  }
+  .skip-link:focus { top: 16px; }
+</style>
+</head>
+<body>
+
+<a href="#scanner" class="skip-link">Skip to main content</a>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<!-- NAV -->
+<nav role="navigation" aria-label="Main navigation">
+  <a href="#" class="nav-logo" aria-label="InfraScan — home">
+    <div class="logo-wordmark">
+      <span class="w1">Infra</span><span class="w2">Scan</span>
+    </div>
+  </a>
+  <ul class="nav-links" id="navLinks" role="menubar">
+    <li role="none"><a href="#scanner" role="menuitem">Scanner</a></li>
+    <li role="none"><a href="#dashboard" role="menuitem">Dashboard</a></li>
+    <li role="none"><a href="#threats" role="menuitem">Threat DB</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navLinks" onclick="toggleNav()">
+    <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">AI-Powered Threat Intelligence — Live</div>
+  <h1>Detect Phishing Links<br>Before They <span class="highlight">Detect You</span></h1>
+  <p>InfraScan's neural analysis engine scans URLs and message content in real-time, flagging malicious patterns, suspicious redirects, and known threat signatures in under 2 seconds.</p>
+
+  <!-- Product Module Buttons -->
+  <div class="hero-modules" role="group" aria-label="Choose a detection module">
+    <a href="phishing.html" class="module-btn module-phishing">
+      <div class="module-content">
+        <div class="module-name">🎣 Phishing</div>
+        <div class="module-desc">IP analysis · Graph visualizer · Alert system</div>
+      </div>
+      <span class="module-arrow">→</span>
+    </a>
+    <a href="bot.html" class="module-btn module-cisys">
+      <div class="module-content">
+        <div class="module-name">🕵️ BOT</div>
+        <div class="module-desc">Intelligence · Mouse tracking · Alert system</div>
+      </div>
+      <span class="module-arrow">→</span>
+    </a>
+  </div>
+</section>
+
+<!-- SCANNER -->
+<section id="scanner" aria-label="URL and message scanner">
+  <div class="scanner-card reveal">
+    <div class="scanner-label" aria-hidden="true">// Threat Scanner v2.4.1</div>
+    <div class="scan-tabs" role="tablist" aria-label="Scan mode">
+      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="inputRow" id="tab-url" onclick="setTab('url', this)">🔗 URL / Link</button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="inputRow" id="tab-text" onclick="setTab('text', this)">📝 Message Text</button>
+    </div>
+
+    <div class="input-row" id="inputRow" role="tabpanel">
+      <input class="url-input" id="urlInput" type="url" placeholder="Paste a suspicious URL or link here…" autocomplete="off" spellcheck="false" aria-label="Enter URL or link to scan" />
+      <button class="scan-btn" id="scanBtn" onclick="runScan()" aria-label="Run phishing scan">
+        <span aria-hidden="true">⚡</span> Scan Now
+      </button>
+    </div>
+
+    <div class="scan-loader" id="scanLoader" role="status" aria-live="polite" aria-label="Scan progress">
+      <span id="loaderText">Initializing scan…</span>
+      <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+      <span id="loaderPct">0%</span>
+    </div>
+
+    <div id="result-panel" role="region" aria-label="Scan results" aria-live="polite">
+      <div class="result-header">
+        <div class="risk-score-ring" id="scoreRing" aria-hidden="true">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#21262d" stroke-width="7"/>
+            <circle cx="40" cy="40" r="34" fill="none" id="ringArc"
+              stroke="#ff3c3c" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+          </svg>
+          <div class="ring-label">
+            <span id="scoreNum">0</span>
+            <small>RISK</small>
+          </div>
+        </div>
+        <div class="result-verdict">
+          <div class="verdict-badge" id="verdictBadge" role="status">—</div>
+          <div class="verdict-url" id="verdictUrl">—</div>
+        </div>
+      </div>
+      <div class="breakdown-grid" id="breakdownGrid" aria-label="Risk factor breakdown"></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-row reveal">
+  <div class="stat-item">
+    <div class="stat-value" style="color:var(--accent2)">24,831</div>
+    <div class="stat-label">🔴 Threats Caught Today</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" style="color:var(--accent)">1.4s</div>
+    <div class="stat-label">⚡ Avg. Scan Time</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" style="color:var(--accent3)">99.2%</div>
+    <div class="stat-label">🎯 Detection Accuracy</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" style="color:var(--accent4)">3.2M</div>
+    <div class="stat-label">📡 Links Scanned</div>
+  </div>
+</div>
+
+<!-- ABOUT SECTION -->
+<section id="about">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-mono">// What is InfraScan</div>
+      <div class="section-title">AI-Driven Cybersecurity Platform</div>
+      <div class="section-subtitle">Two powerful modules. One unified defense system.</div>
+    </div>
+  </div>
+
+  <div class="about-grid reveal">
+    <div class="about-block">
+      <h2>🎣 Phishing Detection</h2>
+      <p>InfraScan's Phishing module uses a 4-stage neural pipeline to detect malicious URLs in real time. By combining heuristic analysis, random forest classifiers, and isolation forests, it identifies deceptive patterns before users ever click a dangerous link.</p>
+      <p>Visual graph traversal maps the entire redirect chain, while behavioral signals add an extra layer of intelligence that no static database can match.</p>
+      <ul class="feature-list">
+        <li><span class="fi">🔗</span>IP address reputation scoring and geolocation intelligence</li>
+        <li><span class="fi">📊</span>Interactive redirect-chain graph visualizer powered by Cytoscape.js</li>
+        <li><span class="fi">🚨</span>Real-time audio alert system with configurable thresholds</li>
+        <li><span class="fi">🤖</span>ML pipeline: Heuristic + Random Forest + Isolation Forest models</li>
+      </ul>
+    </div>
+
+    <div class="about-block">
+      <h2>🕵️ BOT Intelligence</h2>
+      <p>The BOT (Cyber Intelligence System) module goes beyond static URL scanning. It passively monitors user sessions and behavioral signals — including mouse movement entropy, keystroke cadence, click patterns, and form interactions — to surface bot-like or anomalous behavior in real time.</p>
+      <p>This makes InfraScan uniquely capable of catching threats that traditional signature-based systems miss entirely.</p>
+      <ul class="feature-list">
+        <li><span class="fi">🧠</span>Threat intelligence aggregation and contextual enrichment</li>
+        <li><span class="fi">🖱️</span>Mouse movement heatmap and click-pattern analytics</li>
+        <li><span class="fi">🚨</span>Multi-channel alert system with real-time audio notifications</li>
+        <li><span class="fi">📈</span>Session-level behavioral scoring and anomaly detection</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- BUSINESS PLAN -->
+<section id="business">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-mono">// Pricing</div>
+      <div class="section-title">Choose Your Plan</div>
+      <div class="section-subtitle">Flexible access for individuals, teams, and enterprise security operations</div>
+    </div>
+  </div>
+
+  <div class="plan-cards reveal">
+    <!-- Starter -->
+    <div class="plan-card">
+      <span class="plan-tag starter">Starter</span>
+      <div class="plan-name">Free</div>
+      <div class="plan-price">₹0 <span>/ month</span></div>
+      <div class="plan-desc">For individuals and security researchers exploring InfraScan's core capabilities.</div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li>500 URL scans / month</li>
+        <li>Phishing module access</li>
+        <li>Basic risk scoring</li>
+        <li>Redirect chain visualization</li>
+        <li class="no">BOT behavioral analysis</li>
+        <li class="no">API access</li>
+        <li class="no">Priority support</li>
+      </ul>
+      <button class="plan-cta">Get Started Free</button>
+    </div>
+
+    <!-- Pro (featured) -->
+    <div class="plan-card featured">
+      <span class="plan-tag pro">Pro — Most Popular</span>
+      <div class="plan-name">Professional</div>
+      <div class="plan-price">₹4,099 <span>/ month</span></div>
+      <div class="plan-desc">For security teams and power users who need full-stack threat intelligence.</div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li>Unlimited URL scans</li>
+        <li>Full Phishing module</li>
+        <li>BOT behavioral analysis</li>
+        <li>Real-time audio alerts</li>
+        <li>API access (10k calls/mo)</li>
+        <li>Mouse & click heatmaps</li>
+        <li class="no">Dedicated infrastructure</li>
+      </ul>
+      <button class="plan-cta">Start Pro Trial</button>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card plan-enterprise">
+      <span class="plan-tag enterprise">Enterprise</span>
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">Custom <span>/ year</span></div>
+      <div class="plan-desc">For organizations requiring white-label deployment, SLAs, and custom ML tuning.</div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li>Unlimited everything</li>
+        <li>White-label deployment</li>
+        <li>Custom ML model training</li>
+        <li>Dedicated infrastructure</li>
+        <li>Unlimited API calls</li>
+        <li>24/7 priority support</li>
+        <li>SSO & compliance reports</li>
+      </ul>
+      <button class="plan-cta" style="border-color:rgba(56,189,248,0.4);color:var(--accent4)">Contact Sales →</button>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-mono">// Risk Dashboard</div>
+      <div class="section-title">Threat Intelligence Overview</div>
+      <div class="section-subtitle">Live breakdown of detected phishing patterns and attack vectors</div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid reveal">
+    <div class="chart-card">
+      <div class="chart-title">Attack Vector Breakdown</div>
+      <div class="chart-sub">Distribution of threat categories detected in last 24h</div>
+      <div class="threat-bars" id="threatBars">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="chart-title">Threat Distribution</div>
+      <div class="chart-sub">By severity level</div>
+      <div class="donut-wrap">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="52" fill="none" stroke="#21262d" stroke-width="16"/>
+          <circle cx="65" cy="65" r="52" fill="none" stroke="#ff3c3c" stroke-width="16"
+            stroke-dasharray="326.7" stroke-dashoffset="0" transform="rotate(-90 65 65)"
+            stroke-dashoffset="81.7" id="donutHigh"/>
+          <circle cx="65" cy="65" r="52" fill="none" stroke="#fbbf24" stroke-width="16"
+            stroke-dasharray="326.7" transform="rotate(-90 65 65)"
+            stroke-dashoffset="163.4" id="donutMed"/>
+          <circle cx="65" cy="65" r="52" fill="none" stroke="#00ff9d" stroke-width="16"
+            stroke-dasharray="326.7" transform="rotate(-90 65 65)"
+            stroke-dashoffset="294.1" id="donutLow"/>
+          <text x="65" y="60" text-anchor="middle" fill="#e6edf3" font-family="Space Mono" font-weight="700" font-size="18">75%</text>
+          <text x="65" y="76" text-anchor="middle" fill="#8b949e" font-family="Space Mono" font-size="9">HIGH RISK</text>
+        </svg>
+        <div class="donut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent2)"></div>
+            <span class="legend-label">High Risk</span>
+            <span class="legend-val" style="color:var(--accent2)">75%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent3)"></div>
+            <span class="legend-label">Medium Risk</span>
+            <span class="legend-val" style="color:var(--accent3)">17%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent)"></div>
+            <span class="legend-label">Low Risk</span>
+            <span class="legend-val" style="color:var(--accent)">8%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THREAT DB -->
+<section id="threats">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-mono">// MongoDB Collection</div>
+      <div class="section-title">Recently Caught Threats</div>
+      <div class="section-subtitle">Live threat database — updated every 30 seconds from active honeypots</div>
+    </div>
+    <div class="db-badge">LIVE DATABASE</div>
+  </div>
+
+  <div class="threat-table-wrap reveal">
+    <div class="table-toolbar">
+      <div class="toolbar-left" role="group" aria-label="Filter by risk level">
+        <button class="filter-btn active" onclick="filterTable('all', this)" aria-pressed="true">All</button>
+        <button class="filter-btn" onclick="filterTable('high', this)" aria-pressed="false">High Risk</button>
+        <button class="filter-btn" onclick="filterTable('medium', this)" aria-pressed="false">Medium</button>
+        <button class="filter-btn" onclick="filterTable('low', this)" aria-pressed="false">Low</button>
+      </div>
+      <input class="search-box" id="tableSearch" type="search" placeholder="Search threats…" oninput="searchTable(this.value)" aria-label="Search threat database" />
+    </div>
+    <table id="threatTable" aria-label="Threat database" role="table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">URL / Indicator</th>
+          <th scope="col">Risk Level</th>
+          <th scope="col">Vector</th>
+          <th scope="col">Detected</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody id="threatBody"></tbody>
+    </table>
+    <div class="table-footer">
+      <div class="page-info" id="pageInfo">Showing 1–10 of 48 entries</div>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"> <span>Infra<span style="color:var(--accent)">Scan</span></span>
+    </div>
+    <div class="footer-copy">© 2025 InfraScan. Built for hackathon. All detections are AI-simulated.</div>
+  </div>
+  <div class="footer-links" aria-label="Footer navigation">
+    <a href="#scanner">Scanner</a>
+    <a href="#threats">Threat DB</a>
+    <a href="#dashboard">Dashboard</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<input id="urlInput" placeholder="Enter URL" />
+<button onclick="scan()">Scan</button>
+
+<h3 id="result"></h3>
+
+<script>
+// ─── DATA ───
+const THREAT_DB = [
+  { url: "http://paypa1-secure.login-verify.net/confirm", risk: "high", vector: "Credential Harvest", time: "2 min ago" },
+  { url: "https://amazon-prize-winner2025.tk/claim?ref=email", risk: "high", vector: "Reward Scam", time: "5 min ago" },
+  { url: "http://secure-bankofamerica.ml/update-info", risk: "high", vector: "Brand Impersonation", time: "11 min ago" },
+  { url: "https://microsoft365-login.xyz/auth/oauth?session=1", risk: "high", vector: "OAuth Phishing", time: "18 min ago" },
+  { url: "http://fedex-delivery-confirm.cc/track?id=PKG8823", risk: "high", vector: "Package Scam", time: "24 min ago" },
+  { url: "https://netflix-billing-issue.info/update-payment", risk: "high", vector: "Subscription Fraud", time: "31 min ago" },
+  { url: "http://irs-tax-refund2025.co/claim-now", risk: "high", vector: "Gov Impersonation", time: "40 min ago" },
+  { url: "https://login.google.com.support-verify.net/", risk: "high", vector: "Subdomain Spoof", time: "52 min ago" },
+  { url: "http://dropbox-share.link/file?token=abc123view", risk: "medium", vector: "File Share Lure", time: "1h ago" },
+  { url: "https://bit.ly/3xK9mPq → paypal-dispute.cc", risk: "medium", vector: "URL Shortener", time: "1h 12m ago" },
+  { url: "http://apple-id-suspended.club/restore", risk: "medium", vector: "Account Suspension", time: "1h 28m ago" },
+  { url: "https://zoom-meeting-invite.net/join?id=928371", risk: "medium", vector: "Meeting Lure", time: "1h 45m ago" },
+  { url: "https://wa.me/link/suspicious-crypto-offer", risk: "medium", vector: "Crypto Scam", time: "2h ago" },
+  { url: "http://linkedin-job-offer.site/apply-now", risk: "medium", vector: "Job Scam", time: "2h 20m ago" },
+  { url: "https://promo.discount-amazon.shop/deal", risk: "low", vector: "Suspicious Promo", time: "3h ago" },
+  { url: "http://tinyurl.com/yphish99x", risk: "low", vector: "URL Shortener", time: "3h 40m ago" },
+  { url: "https://support.example-helpdesk.xyz/ticket", risk: "low", vector: "Support Scam", time: "4h ago" },
+  { url: "https://free-vpn-download-2025.net/install", risk: "medium", vector: "Malware Dropper", time: "4h 30m ago" },
+  { url: "http://survey-win-gift.info/complete?uid=4892", risk: "high", vector: "Survey Scam", time: "5h ago" },
+  { url: "https://verify-account.paypa1.com.evil.io/login", risk: "high", vector: "Homograph Attack", time: "5h 20m ago" },
+];
+
+const ATTACK_VECTORS = [
+  { name: "Credential Harvesting", count: 9841, color: "#ff3c3c", pct: 92 },
+  { name: "Brand Impersonation", count: 6203, color: "#ff7c3c", pct: 74 },
+  { name: "URL Shortener Abuse", count: 4127, color: "#fbbf24", pct: 55 },
+  { name: "Subdomain Spoofing", count: 2891, color: "#38bdf8", pct: 42 },
+  { name: "OAuth Phishing", count: 1543, color: "#a78bfa", pct: 28 },
+  { name: "Redirect Chains", count: 834, color: "#00ff9d", pct: 16 },
+];
+
+// ─── NAV ───
+function toggleNav() {
+  const nav = document.getElementById('navLinks');
+  const btn = document.getElementById('hamburger');
+  const isOpen = nav.classList.toggle('open');
+  btn.setAttribute('aria-expanded', isOpen);
+}
+// Close nav on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const nav = document.getElementById('navLinks');
+    const btn = document.getElementById('hamburger');
+    if (nav.classList.contains('open')) {
+      nav.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
+  }
+});
+// Close nav when a nav link is clicked (mobile)
+document.querySelectorAll('#navLinks a').forEach(a => {
+  a.addEventListener('click', () => {
+    document.getElementById('navLinks').classList.remove('open');
+    document.getElementById('hamburger').setAttribute('aria-expanded', 'false');
+  });
+});
+
+// ─── TABS ───
+let currentTab = 'url';
+function setTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  const input = document.getElementById('urlInput');
+  if (tab === 'text') {
+    input.type = 'text';
+    input.setAttribute('aria-label', 'Enter message text to scan');
+    input.placeholder = 'Paste a suspicious message, SMS, or email text here…';
+  } else {
+    input.type = 'url';
+    input.setAttribute('aria-label', 'Enter URL or link to scan');
+    input.placeholder = 'Paste a suspicious URL or link here…';
+  }
+}
+
+// ─── SCAN ENGINE ───
+const CHECKS = [
+  { key: 'https', label: 'HTTPS Protocol', icon: '🔒' },
+  { key: 'tld', label: 'Suspicious TLD', icon: '🌐' },
+  { key: 'keywords', label: 'Phishing Keywords', icon: '🎣' },
+  { key: 'redirects', label: 'Redirect Chain', icon: '↩️' },
+  { key: 'domain_age', label: 'Domain Age', icon: '📅' },
+  { key: 'brand', label: 'Brand Spoofing', icon: '🏷️' },
+  { key: 'homograph', label: 'Homograph Attack', icon: '🔡' },
+  { key: 'shortener', label: 'URL Shortener', icon: '🔗' },
+];
+
+const SUSPICIOUS_TLDS = ['.tk','.ml','.ga','.cf','.gq','.xyz','.club','.info','.cc','.co','.net','phish','evil','malware'];
+const PHISH_KEYWORDS = ['login','verify','secure','update','confirm','account','billing','payment','suspend','alert','urgent','claim','prize','winner','free','password','credential','bank','paypal','amazon','netflix','microsoft','apple','google'];
+const SHORTENERS = ['bit.ly','tinyurl','goo.gl','t.co','ow.ly','buff.ly','adf.ly','lnk.to','shorte.st','wa.me'];
+
+function analyzeURL(input) {
+  const url = input.toLowerCase().trim();
+  let score = 0;
+  const flags = [];
+
+  const noHttps = !url.startsWith('https://');
+  if (noHttps) { score += 20; flags.push({ key: 'https', status: 'red', detail: 'Site does not use HTTPS — data sent in plaintext', level: 'FLAGGED' }); }
+  else { flags.push({ key: 'https', status: 'green', detail: 'Encrypted HTTPS connection detected', level: 'SECURE' }); }
+
+  const badTld = SUSPICIOUS_TLDS.some(t => url.includes(t));
+  if (badTld) { score += 25; flags.push({ key: 'tld', status: 'red', detail: 'Top-level domain commonly used in phishing campaigns', level: 'FLAGGED' }); }
+  else { flags.push({ key: 'tld', status: 'green', detail: 'TLD appears legitimate', level: 'OK' }); }
+
+  const kwMatches = PHISH_KEYWORDS.filter(k => url.includes(k));
+  if (kwMatches.length >= 2) { score += 20; flags.push({ key: 'keywords', status: 'red', detail: `Matched keywords: ${kwMatches.slice(0,3).join(', ')}`, level: 'FLAGGED' }); }
+  else if (kwMatches.length === 1) { score += 8; flags.push({ key: 'keywords', status: 'yellow', detail: `Keyword match: "${kwMatches[0]}"`, level: 'WARNING' }); }
+  else { flags.push({ key: 'keywords', status: 'green', detail: 'No suspicious keyword patterns found', level: 'CLEAR' }); }
+
+  const redirectCount = (url.match(/redirect|url=|next=|return=/g) || []).length;
+  if (redirectCount >= 2) { score += 15; flags.push({ key: 'redirects', status: 'red', detail: `Detected ${redirectCount} redirect params — possible redirect chain`, level: 'FLAGGED' }); }
+  else { flags.push({ key: 'redirects', status: 'green', detail: 'No suspicious redirect parameters', level: 'CLEAR' }); }
+
+  const domainAgeSuspect = url.includes('2024') || url.includes('2025') || /\d{4,}/.test(url.split('/')[2] || '');
+  if (domainAgeSuspect) { score += 10; flags.push({ key: 'domain_age', status: 'yellow', detail: 'Domain pattern suggests recently registered', level: 'WARNING' }); }
+  else { flags.push({ key: 'domain_age', status: 'green', detail: 'Domain age appears normal', level: 'OK' }); }
+
+  const brands = ['paypal','amazon','microsoft','google','apple','netflix','facebook','instagram','bank'];
+  const brandMatch = brands.find(b => url.includes(b));
+  const domainPart = url.split('/')[2] || '';
+  if (brandMatch && !domainPart.endsWith(brandMatch + '.com') && !domainPart.endsWith(brandMatch + '.net')) {
+    score += 18; flags.push({ key: 'brand', status: 'red', detail: `"${brandMatch}" brand name used outside official domain`, level: 'FLAGGED' });
+  } else { flags.push({ key: 'brand', status: 'green', detail: 'No brand impersonation detected', level: 'CLEAR' }); }
+
+  const homograph = /[0-9]/.test(domainPart.replace('www.','').split('.')[0]);
+  if (homograph) { score += 12; flags.push({ key: 'homograph', status: 'yellow', detail: 'Digits in domain may mimic legitimate characters', level: 'WARNING' }); }
+  else { flags.push({ key: 'homograph', status: 'green', detail: 'No homograph patterns detected', level: 'CLEAR' }); }
+
+  const isShortener = SHORTENERS.some(s => url.includes(s));
+  if (isShortener) { score += 10; flags.push({ key: 'shortener', status: 'yellow', detail: 'URL shortener hides the real destination', level: 'WARNING' }); }
+  else { flags.push({ key: 'shortener', status: 'green', detail: 'Full URL — destination is visible', level: 'OK' }); }
+
+  score = Math.min(100, score);
+  return { score, flags };
+}
+
+async function runScan() {
+  const input = document.getElementById('urlInput').value.trim();
+  if (!input) { showToast('⚠️ Please enter a URL or message'); return; }
+
+  // Show loader
+  const btn = document.getElementById('scanBtn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span>⏳</span> Scanning…';
+  document.getElementById('result-panel').style.display = 'none';
+  const loader = document.getElementById('scanLoader');
+  loader.classList.add('active');
+
+  const steps = [
+    [0, 'Initializing scan engine…'],
+    [20, 'Resolving domain…'],
+    [40, 'Checking threat database…'],
+    [60, 'Running AI pattern analysis…'],
+    [80, 'Analyzing redirect chain…'],
+    [100, 'Finalizing report…'],
+  ];
+
+  for (const [pct, msg] of steps) {
+    document.getElementById('loaderFill').style.width = pct + '%';
+    document.getElementById('loaderPct').textContent = pct + '%';
+    document.getElementById('loaderText').textContent = msg;
+    await delay(300);
+  }
+
+  loader.classList.remove('active');
+  btn.classList.remove('loading');
+  btn.innerHTML = '<span>⚡</span> Scan Now';
+
+  const { score, flags } = analyzeURL(input);
+  renderResult(input, score, flags);
+}
+async function scan() {
+  const url = document.getElementById("urlInput").value;
+
+  try {
+    const res = await fetch("http://localhost:5001/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("result").innerText =
+      "Risk: " + data.risk + " | Score: " + data.score;
+
+  } catch (err) {
+    document.getElementById("result").innerText =
+      "Error connecting to backend";
+  }
+}
+function renderResult(input, score, flags) {
+  const panel = document.getElementById('result-panel');
+  panel.style.display = 'block';
+
+  // Score ring
+  const circumference = 2 * Math.PI * 34;
+  const arc = document.getElementById('ringArc');
+  const offset = circumference - (score / 100) * circumference;
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = score >= 70 ? '#ff3c3c' : score >= 40 ? '#fbbf24' : '#00ff9d';
+
+  // Animate number
+  let n = 0;
+  const el = document.getElementById('scoreNum');
+  const interval = setInterval(() => {
+    n = Math.min(n + 3, score);
+    el.textContent = n;
+    if (n >= score) clearInterval(interval);
+  }, 20);
+
+  // Verdict
+  const badge = document.getElementById('verdictBadge');
+  badge.className = 'verdict-badge';
+  if (score >= 70) { badge.classList.add('danger'); badge.innerHTML = '🚨 HIGH RISK — Likely Phishing'; }
+  else if (score >= 35) { badge.classList.add('warning'); badge.innerHTML = '⚠️ MEDIUM RISK — Suspicious'; }
+  else { badge.classList.add('safe'); badge.innerHTML = '✅ LOW RISK — Appears Safe'; }
+
+  document.getElementById('verdictUrl').textContent = input.length > 80 ? input.slice(0,80) + '…' : input;
+
+  // Breakdown
+  const grid = document.getElementById('breakdownGrid');
+  grid.innerHTML = '';
+  const checkMap = Object.fromEntries(CHECKS.map(c => [c.key, c]));
+
+  flags.forEach((f, i) => {
+    const check = checkMap[f.key];
+    const cls = f.status === 'red' ? 'flagged' : f.status === 'green' ? 'ok' : 'warn';
+    const div = document.createElement('div');
+    div.className = `breakdown-item ${cls}`;
+    div.style.animationDelay = (i * 0.06) + 's';
+    div.innerHTML = `
+      <div class="breakdown-icon">${check.icon}</div>
+      <div class="breakdown-title">${check.label}</div>
+      <div class="breakdown-detail">${f.detail}</div>
+      <div class="breakdown-status ${f.status}">${f.level}</div>
+    `;
+    grid.appendChild(div);
+  });
+
+  // Optionally add to threat DB if high risk
+  if (score >= 70) {
+    const exists = THREAT_DB.some(t => t.url.includes(input.slice(0,30)));
+    if (!exists) {
+      THREAT_DB.unshift({ url: input, risk: 'high', vector: 'User Submission', time: 'Just now' });
+      renderTable();
+      showToast('🔴 Threat added to database');
+    }
+  }
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── ATTACK VECTOR BARS ───
+function renderBars() {
+  const container = document.getElementById('threatBars');
+  container.innerHTML = '';
+  ATTACK_VECTORS.forEach(v => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-meta">
+        <span class="bar-name">${v.name}</span>
+        <span class="bar-count">${v.count.toLocaleString()}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="background:${v.color}" data-pct="${v.pct}"></div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 400);
+}
+
+// ─── THREAT TABLE ───
+let currentFilter = 'all';
+let currentSearch = '';
+let currentPage = 1;
+const PAGE_SIZE = 8;
+
+function getFiltered() {
+  return THREAT_DB.filter(t => {
+    const matchFilter = currentFilter === 'all' || t.risk === currentFilter;
+    const matchSearch = !currentSearch || t.url.toLowerCase().includes(currentSearch) || t.vector.toLowerCase().includes(currentSearch);
+    return matchFilter && matchSearch;
+  });
+}
+
+function renderTable() {
+  const data = getFiltered();
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  currentPage = Math.min(currentPage, totalPages || 1);
+  const slice = data.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const body = document.getElementById('threatBody');
+  body.innerHTML = '';
+  slice.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-family:var(--font-mono);font-size:0.75rem">${(currentPage - 1) * PAGE_SIZE + i + 1}</td>
+      <td class="td-url" title="${t.url}">${t.url}</td>
+      <td><span class="risk-chip ${t.risk}">${t.risk.toUpperCase()}</span></td>
+      <td style="font-size:0.8rem;color:var(--muted)">${t.vector}</td>
+      <td class="td-time">${t.time}</td>
+      <td><button class="copy-btn" onclick="copyUrl('${t.url.replace(/'/g,"\\'")}', this)" aria-label="Copy URL to clipboard">Copy</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  document.getElementById('pageInfo').textContent =
+    `Showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, data.length)} of ${data.length} entries`;
+
+  // Pagination
+  const pgBtns = document.getElementById('pageBtns');
+  pgBtns.innerHTML = '';
+  pgBtns.setAttribute('role', 'navigation');
+  pgBtns.setAttribute('aria-label', 'Table pagination');
+  for (let p = 1; p <= totalPages; p++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (p === currentPage ? ' active' : '');
+    btn.textContent = p;
+    btn.setAttribute('aria-label', `Page ${p}`);
+    btn.setAttribute('aria-current', p === currentPage ? 'page' : 'false');
+    btn.onclick = () => { currentPage = p; renderTable(); };
+    pgBtns.appendChild(btn);
+  }
+}
+
+function filterTable(filter, btn) {
+  currentFilter = filter;
+  currentPage = 1;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
+  renderTable();
+}
+
+function searchTable(val) {
+  currentSearch = val.toLowerCase();
+  currentPage = 1;
+  renderTable();
+}
+
+// ─── API TRY ───
+function trySend() {
+  const url = document.getElementById('tryUrl').value;
+  const method = document.getElementById('tryMethod').value;
+  const resp = document.getElementById('tryResponse');
+  resp.innerHTML = '<span style="color:var(--accent4)">// Sending request…</span>';
+
+  setTimeout(() => {
+    const fakeResp = {
+      status: 200,
+      body: {
+        risk_score: Math.floor(Math.random() * 50) + 30,
+        verdict: "MEDIUM_RISK",
+        flags: ["SUSPICIOUS_KEYWORD", "URL_SHORTENER"],
+        scan_time_ms: Math.floor(Math.random() * 800) + 600,
+        engine: "InfraScan v2.4.1",
+        timestamp: new Date().toISOString()
+      }
+    };
+    const formatted = JSON.stringify(fakeResp.body, null, 2)
+      .replace(/"([^"]+)":/g, '<span style="color:var(--accent4)">"$1"</span>:')
+      .replace(/: "([^"]+)"/g, ': <span style="color:#f1fa8c">"$1"</span>')
+      .replace(/: (\d+)/g, ': <span style="color:#bd93f9">$1</span>');
+    resp.innerHTML = `<span style="color:var(--accent)">// 200 OK — ${url}</span>\n` + formatted;
+    showToast('✅ API response received');
+  }, 900);
+}
+
+// ─── UTILS ───
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function copyUrl(url, btn) {
+  navigator.clipboard.writeText(url).catch(() => {});
+  showToast('📋 URL copied to clipboard');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.setAttribute('aria-label', 'Copied!');
+    setTimeout(() => { btn.textContent = orig; btn.setAttribute('aria-label', 'Copy URL to clipboard'); }, 1800);
+  }
+}
+
+function copyCode(btn) {
+  const block = btn.parentElement.textContent.replace('Copy','').trim();
+  navigator.clipboard.writeText(block).catch(() => {});
+  btn.textContent = '✓ Copied';
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── SCROLL REVEAL ───
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ─── INIT ───
+renderBars();
+renderTable();
+
+// Auto-scan on Enter
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runScan();
+});
+</script>
+</body>
+</html>
